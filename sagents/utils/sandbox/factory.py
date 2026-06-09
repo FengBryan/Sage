@@ -153,16 +153,44 @@ class SandboxProviderFactory:
                 )
 
             elif config.remote_provider == "kubernetes":
+                kubernetes_config = {
+                    k: v
+                    for k, v in provider_config.items()
+                    if k
+                    not in {
+                        "workspace_mount",
+                        "namespace",
+                        "resources",
+                        "service_account_name",
+                        "session_id",
+                        "pvc",
+                        "pod_labels",
+                        "pod_annotations",
+                        "pod_security_context",
+                        "container_security_context",
+                        "command_logging",
+                        "pod_command",
+                        "pod_args",
+                    }
+                }
                 return provider_class(
                     **common_kwargs,
-                    namespace=provider_config.get("namespace", "default"),  # pyright: ignore[reportCallIssue]
+                    namespace=provider_config.get("namespace", "default"),
                     image=config.remote_image,  # pyright: ignore[reportCallIssue]
-                    resources=provider_config.get("resources", {}),  # pyright: ignore[reportCallIssue]
-                    **{
-                        k: v
-                        for k, v in provider_config.items()
-                        if k not in ["namespace", "resources"]
-                    },
+                    resources=provider_config.get("resources", {}),
+                    service_account_name=provider_config.get("service_account_name"),
+                    session_id=provider_config.get("session_id"),
+                    pvc=provider_config.get("pvc"),
+                    pod_labels=provider_config.get("pod_labels", {}),
+                    pod_annotations=provider_config.get("pod_annotations", {}),
+                    pod_security_context=provider_config.get("pod_security_context"),
+                    container_security_context=provider_config.get(
+                        "container_security_context"
+                    ),
+                    command_logging=provider_config.get("command_logging"),
+                    pod_command=provider_config.get("pod_command"),
+                    pod_args=provider_config.get("pod_args"),
+                    **kubernetes_config,
                 )
 
             elif config.remote_provider == "firecracker":
