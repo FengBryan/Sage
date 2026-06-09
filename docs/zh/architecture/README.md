@@ -95,6 +95,7 @@ flowchart LR
 3. [会话与上下文（Session & Context）](ARCHITECTURE_SAGENTS_SESSION_CONTEXT.md)：`Session`、`SessionContext`、消息管理、会话/用户记忆与 workflow
 4. [工具与技能（Tool & Skill）系统](ARCHITECTURE_SAGENTS_TOOL_SKILL.md)：`ToolManager` / `ToolProxy`、内置工具、MCP 代理、`SkillManager` / `SkillProxy`、沙箱内技能
 5. [沙箱、LLM 适配与可观测性](ARCHITECTURE_SAGENTS_SANDBOX_OBS.md)：`SandboxProviderFactory` 三种沙箱、`SageAsyncOpenAI` 模型层与 OpenTelemetry 链路
+6. [Kubernetes 沙箱对接指南](KUBERNETES_SANDBOX_INTEGRATION.md)：集群内 Kubernetes remote sandbox 的镜像、RBAC、PVC、Sage 配置、冒烟验证与排障
 
 ### 设计与方案草案（待落地）
 
@@ -118,4 +119,3 @@ flowchart TD
     Want --> D[做桌面打包]
     D --> D1[桌面应用架构] --> D2[app/desktop/scripts]
 ```
-

@@ -85,7 +85,7 @@ ref: http-api-reference
 | Base URL    | 例如 `http://127.0.0.1:8000`                                                                                                                                                                   |
 | 主响应格式       | 大多数 `/api/`* 接口返回 `BaseResponse[T]`；**计划任务**模块路径前缀为 `/tasks`（非 `/api/tasks`），且多数字段直接为 Pydantic 响应体，无外层 `code`                                                                                |
 | 流式接口        | `/api/chat`、`/api/chat/optimize-input/stream`、`/api/stream`、`/api/web-stream`、`/api/conversations/{id}/rerun-stream`、`/api/stream/resume/`*、`/api/stream/active_sessions` 不返回 `BaseResponse` |
-| 文件下载        | `/api/agent/{agent_id}/file_workspace/download` 返回文件流                                                                                                                                        |
+| 文件下载        | `/api/agent/{agent_id}/file_workspace/download` 与 `/api/sessions/{session_id}/file_workspace/download` 返回文件流                                                                                 |
 | OAuth2 协议接口 | `/oauth2/`* 与 `/api/oauth2/`* 返回 OAuth2 标准响应                                                                                                                                                 |
 | 探活          | `GET /active` 返回纯文本，**无** `BaseResponse` 包裹，也无 `/api` 前缀                                                                                                                                     |
 | 登录态         | 当前产品接口大多依赖服务端 session；只拿到 `access_token` 不等于能直接访问所有产品接口                                                                                                                                      |
@@ -246,6 +246,8 @@ ref: http-api-reference
 | POST   | `/api/agent/{agent_id}/file_workspace`          | Query: `session_id`                       | 工作区文件列表            | 获取工作区文件                                                  |
 | GET    | `/api/agent/{agent_id}/file_workspace/download` | Query: `file_path`,`session_id?`          | 文件流                | 下载工作区文件                                                  |
 | DELETE | `/api/agent/{agent_id}/file_workspace/delete`   | Query: `file_path`,`session_id?`          | 删除结果               | 删除工作区文件                                                  |
+| GET    | `/api/sessions/{session_id}/file_workspace/download` | Query: `file_path`                   | 文件流                | 下载 session workspace 中的文件                                 |
+| GET    | `/api/sessions/{session_id}/file_workspace/stream`   | Query: `file_path`；Header: `Range?` | 文件流                | 支持 Range 的 session workspace 文件流式读取                    |
 | POST   | `/api/agent/auto-generate/submit`               | `AutoGenAgentRequest`                     | 任务提交结果             | 将「自动生成 Agent」改为异步任务（轮询 `GET /api/agent/tasks/{task_id}`） |
 | POST   | `/api/agent/system-prompt/optimize/submit`      | `SystemPromptOptimizeRequest`             | 任务提交结果             | 将 system prompt 优化改为异步任务                                 |
 | POST   | `/api/agent/abilities`                          | `AgentAbilitiesRequest`                   | 能力卡片列表等            | 为 Agent 生成功能/能力点卡片（如 UI 展示用）                             |
@@ -939,4 +941,3 @@ curl -X POST http://127.0.0.1:8000/oauth2/token \
 - 这页只保留当前代码里真实存在、且对接方真正需要知道的信息；已与 `app/server/routers` 中实际注册的路由逐组核对；桌面等其它入口的额外 API 不写入本页。
 - 旧接口、推测行为、历史遗留说明都尽量压缩到最小。
 - 如果后面继续补，会优先补“错误响应示例”和“字段级枚举说明”，不会再把页面写回成流水账。
-

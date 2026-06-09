@@ -66,6 +66,7 @@ flowchart LR
 
 - **LOCAL**：默认模式。给每个会话一个独立目录作为 `sandbox_agent_workspace`，再加资源限制（CPU 时间、内存、可访问路径）。
 - **REMOTE**：把执行外包给 OpenSandbox / Kubernetes / Firecracker 等远端运行时，工厂根据 `remote_provider` 选择具体实现。
+- **Kubernetes 远程沙箱**：对接步骤见 [Kubernetes 沙箱对接指南](KUBERNETES_SANDBOX_INTEGRATION.md)，包含集群内权限、PVC 工作区、runtime 镜像、runner 调用和排障。
 - **PASSTHROUGH**：完全不隔离，直接在宿主机执行，多用于本地 CLI 与 examples。
 
 ### 1.3 ISandboxHandle 关键能力

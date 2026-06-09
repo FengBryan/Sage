@@ -91,6 +91,7 @@ Core runtime `sagents/` architecture:
 3. [Session & Context](ARCHITECTURE_SAGENTS_SESSION_CONTEXT.md)
 4. [Tool & Skill System](ARCHITECTURE_SAGENTS_TOOL_SKILL.md)
 5. [Sandbox, LLM Adapter & Observability](ARCHITECTURE_SAGENTS_SANDBOX_OBS.md)
+6. [Kubernetes Sandbox Integration Guide](KUBERNETES_SANDBOX_INTEGRATION.md)
 
 ### Design drafts (not implemented in code)
 

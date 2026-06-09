@@ -85,7 +85,7 @@ For embedding the Python runtime (`SAgent`, `run_stream`, tools), see [API Refer
 | Base URL                  | For example `http://127.0.0.1:8000`                                                                                                                                                                               |
 | Main response shape       | Most `/api/`* routes return `BaseResponse[T]`. The **planner/scheduler** module is mounted at `/tasks` (not `/api/tasks`) and usually returns Pydantic models or plain JSON, without a top-level `code` field     |
 | Streaming endpoints       | `/api/chat`, `/api/chat/optimize-input/stream`, `/api/stream`, `/api/web-stream`, `POST /api/conversations/{id}/rerun-stream`, `/api/stream/resume/`*, `/api/stream/active_sessions` do not return `BaseResponse` |
-| File download             | `/api/agent/{agent_id}/file_workspace/download` returns a file response                                                                                                                                           |
+| File download             | `/api/agent/{agent_id}/file_workspace/download` and `/api/sessions/{session_id}/file_workspace/download` return file streams                                                                                      |
 | OAuth2 protocol endpoints | `/oauth2/`* and `/api/oauth2/*` return OAuth2-standard payloads                                                                                                                                                   |
 | Liveness                  | `GET /active` returns plain text (no `BaseResponse`, no `/api` prefix)                                                                                                                                            |
 | Login state               | Most product-facing endpoints depend on server-side session state, not only on the returned `access_token`                                                                                                        |
@@ -244,6 +244,8 @@ Defined in `app/server/routers/task.py`. Most responses are **Pydantic models** 
 | POST   | `/api/agent/{agent_id}/file_workspace`          | Query: `session_id`                       | workspace file list  | List workspace files                                          |
 | GET    | `/api/agent/{agent_id}/file_workspace/download` | Query: `file_path`,`session_id?`          | file response        | Download workspace file                                       |
 | DELETE | `/api/agent/{agent_id}/file_workspace/delete`   | Query: `file_path`,`session_id?`          | delete result        | Delete workspace file                                         |
+| GET    | `/api/sessions/{session_id}/file_workspace/download` | Query: `file_path`                   | file stream          | Download a file from a session workspace                      |
+| GET    | `/api/sessions/{session_id}/file_workspace/stream`   | Query: `file_path`; Header: `Range?` | file stream          | Stream a file from a session workspace with Range support     |
 | POST   | `/api/agent/auto-generate/submit`               | `AutoGenAgentRequest`                     | task submission      | Async agent generation; poll `GET /api/agent/tasks/{task_id}` |
 | POST   | `/api/agent/system-prompt/optimize/submit`      | `SystemPromptOptimizeRequest`             | task submission      | Async prompt optimization                                     |
 | POST   | `/api/agent/abilities`                          | `AgentAbilitiesRequest`                   | ability card payload | Build UI-facing ability cards for an agent                    |
@@ -935,4 +937,3 @@ curl -X POST http://127.0.0.1:8000/oauth2/token \
 - This page keeps only information that is real in the current codebase and useful for integrators; it was cross-checked against the routers in `app/server/routers`. Extra routes from `app/desktop/`, etc., are not listed here.
 - Old paths, guessed behavior, and historical noise have been minimized.
 - If this page gets extended further, the next useful additions are error response examples and field-level enum notes, not more prose.
-

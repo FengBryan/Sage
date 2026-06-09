@@ -62,6 +62,8 @@ flowchart LR
 
 - **LOCAL**: default. Each session gets its own `sandbox_agent_workspace`, plus resource limits (CPU time, memory, allowed paths).
 - **REMOTE**: outsource execution to OpenSandbox / Kubernetes / Firecracker; the factory selects the implementation by `remote_provider`.
+- **Kubernetes remote sandbox**: see [Kubernetes Sandbox](KUBERNETES_SANDBOX.md) for in-cluster provider configuration, PVC workspace binding, the sandbox runtime image, shell runner behavior, and metric events.
+- **Kubernetes integration guide**: see [Kubernetes Sandbox Integration Guide](KUBERNETES_SANDBOX_INTEGRATION.md) for image, RBAC, PVC, Sage configuration, smoke tests, and troubleshooting.
 - **PASSTHROUGH**: no isolation at all, run on the host – mostly for local CLI and examples.
 
 ### 1.3 Key Capabilities of ISandboxHandle

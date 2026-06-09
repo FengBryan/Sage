@@ -1,3 +1,5 @@
+2026-06-04 Kubernetes remote sandbox 对接落地：新增集群内 Kubernetes provider，使用已有 PVC + 可模板化 subPath 作为会话工作区，支持 Pod 创建/复用/终止重建、Kubernetes exec 调用 `sage-shell-runner`、文件读写/list/stat/delete/mkdir、tar copy、后台任务 start/read/range/size/state/kill；新增 sandbox runtime 包、metric agent、项目维护的 sandbox 镜像与 JSON metrics，默认不记录原始命令；修复 tar copy 对 exec stdin EOF 的依赖，改为 `--size-bytes` 固定长度读取，并兼容真实 Kubernetes Python client preload stream 返回 dict/tuple/data wrapper 的响应形态；补中英文 Kubernetes 沙箱对接指南、架构入口、mock k8s server + tool 调用联调，以及 runtime/provider/tool 相关回归测试（sandbox targeted 105 passed，execute command tool 5 passed）。
+
 2026-05-26 部署与观测持续收敛：`deploy/compose.sh` 优化单服务/分环境启动与原生输出；Prometheus/Loki/Grafana 面板与指标多轮调整，补环境与容器维度；去除 dev/test 部署冗余依赖；修复 Fibre agent 返回 agent 名称参数；Windows desktop 构建补 ensurepip。
 
 2026-05-26 server web 渲染改造：精简文件/Markdown/高亮渲染链路，移除多类重型嵌入式文档渲染组件，调整前端依赖与 wiki nginx 配置。
