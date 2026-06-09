@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/sage \
+    SAGE_SANDBOX_RUNTIME=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash \
+        ca-certificates \
+        coreutils \
+        procps \
+        tar \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/sage
+
+COPY sagents /opt/sage/sagents
+
+RUN ln -s /usr/local/bin/python /usr/local/bin/sage-shell-runner-python \
+    && printf '#!/bin/sh\nexec python -m sagents.utils.sandbox.runtime.runner "$@"\n' > /usr/local/bin/sage-shell-runner \
+    && printf '#!/bin/sh\nexec python -m sagents.utils.sandbox.runtime.agent "$@"\n' > /usr/local/bin/sage-sandbox-metric-agent \
+    && chmod +x /usr/local/bin/sage-shell-runner /usr/local/bin/sage-sandbox-metric-agent
+
+RUN mkdir -p /sage-workspace
+
+WORKDIR /sage-workspace
+
+CMD ["sage-sandbox-metric-agent"]
