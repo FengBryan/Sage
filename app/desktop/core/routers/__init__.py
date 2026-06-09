@@ -6,6 +6,7 @@ from .agent import agent_router
 from .chat import chat_router
 from .conversation import conversation_router
 from .mcp import mcp_router
+from .session_workspace import session_workspace_router
 from .skill import skill_router
 from .system import system_router
 from .tool import tool_router
@@ -25,6 +26,7 @@ __all__ = [
 def register_routes(app):
     app.include_router(mcp_router)
     app.include_router(agent_router)
+    app.include_router(session_workspace_router)
     app.include_router(conversation_router)
     app.include_router(tool_router)
     app.include_router(system_router)

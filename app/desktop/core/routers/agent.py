@@ -2,13 +2,12 @@
 Agent 相关路由
 """
 
-import os
 import re
 from typing import Optional
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from loguru import logger
 import shutil
 
@@ -30,6 +29,21 @@ from ..user_context import get_desktop_user_id
 
 # 创建路由器
 agent_router = APIRouter(prefix="/api/agent", tags=["Agent"])
+
+
+def _streaming_response_from_plan(plan, *, status_code: int = 200, headers=None):
+    response_headers = {
+        "Content-Length": str(plan.size),
+        "Content-Disposition": f'inline; filename="{plan.filename}"',
+    }
+    if headers:
+        response_headers.update(headers)
+    return StreamingResponse(
+        plan.iter_bytes(),
+        status_code=status_code,
+        headers=response_headers,
+        media_type=plan.media_type,
+    )
 
 
 def _resolve_request_language(
@@ -486,12 +500,12 @@ async def download_file(agent_id: str, request: Request):
     sage_home / "agents" / agent_id  # pyright: ignore[reportUnusedExpression]
 
     try:
-        path, filename, media_type = await agent_service.download_desktop_agent_file(
+        plan = await agent_service.prepare_desktop_agent_read_plan(
             agent_id,
             file_path,  # pyright: ignore[reportArgumentType]
         )
-        logger.bind(agent_id=agent_id).info(f"Download resolved: path={path}")
-        return FileResponse(path=path, filename=filename, media_type=media_type)
+        logger.bind(agent_id=agent_id).info(f"Download resolved: source={plan.source}")
+        return _streaming_response_from_plan(plan)
     except Exception as e:
         logger.bind(agent_id=agent_id).error(f"Download failed: {e}")
         raise
@@ -504,7 +518,7 @@ async def stream_file(agent_id: str, request: Request):
     logger.bind(agent_id=agent_id).info(f"Stream request: file_path={file_path}")
 
     try:
-        path, filename, media_type = await agent_service.download_desktop_agent_file(
+        initial_plan = await agent_service.prepare_desktop_agent_read_plan(
             agent_id,
             file_path,  # pyright: ignore[reportArgumentType]
         )
@@ -512,19 +526,8 @@ async def stream_file(agent_id: str, request: Request):
         logger.bind(agent_id=agent_id).error(f"Stream resolve failed: {e}")
         raise
 
-    file_size = os.path.getsize(path)
+    file_size = initial_plan.size
     range_header = request.headers.get("range")
-
-    def iter_file(start: int, end: int):
-        with open(path, "rb") as f:
-            f.seek(start)
-            remaining = end - start + 1
-            while remaining > 0:
-                chunk = f.read(min(65536, remaining))
-                if not chunk:
-                    break
-                remaining -= len(chunk)
-                yield chunk
 
     if range_header:
         match = re.match(r"bytes=(\d+)-(\d*)", range_header)
@@ -532,29 +535,23 @@ async def stream_file(agent_id: str, request: Request):
             start = int(match.group(1))
             end = int(match.group(2)) if match.group(2) else file_size - 1
             end = min(end, file_size - 1)
-            headers = {
-                "Content-Range": f"bytes {start}-{end}/{file_size}",
-                "Accept-Ranges": "bytes",
-                "Content-Length": str(end - start + 1),
-                "Content-Disposition": f'inline; filename="{filename}"',
-            }
-            return StreamingResponse(
-                iter_file(start, end),
+            plan = await agent_service.prepare_desktop_agent_read_plan(
+                agent_id,
+                file_path,  # pyright: ignore[reportArgumentType]
+                byte_range=(start, end),
+            )
+            return _streaming_response_from_plan(
+                plan,
                 status_code=206,
-                headers=headers,
-                media_type=media_type,
+                headers={
+                    "Content-Range": f"bytes {start}-{end}/{file_size}",
+                    "Accept-Ranges": "bytes",
+                },
             )
 
-    headers = {
-        "Accept-Ranges": "bytes",
-        "Content-Length": str(file_size),
-        "Content-Disposition": f'inline; filename="{filename}"',
-    }
-    return StreamingResponse(
-        iter_file(0, file_size - 1),
-        status_code=200,
-        headers=headers,
-        media_type=media_type,
+    return _streaming_response_from_plan(
+        initial_plan,
+        headers={"Accept-Ranges": "bytes"},
     )
 
 

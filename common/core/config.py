@@ -118,6 +118,19 @@ class StartupConfig:
     s3_secure: bool = False
     s3_bucket_name: Optional[str] = None
     s3_public_base_url: Optional[str] = None
+    workspace_read_cache_enabled: bool = False
+    workspace_read_cache_provider: str = "gcs"
+    workspace_read_cache_prefix: str = "workspace-cache"
+    gcs_bucket_name: Optional[str] = None
+    gcs_credentials_json: Optional[str] = None
+    # Deprecated compatibility fields. Prefer workspace_read_cache_prefix,
+    # gcs_bucket_name, and gcs_credentials_json.
+    workspace_read_cache_gcs_bucket: Optional[str] = None
+    workspace_read_cache_gcs_prefix: str = "workspace-cache"
+    workspace_read_cache_gcs_credentials_json: Optional[str] = None
+    workspace_read_cache_sample_threshold_bytes: int = 3 * 1024 * 1024
+    workspace_read_cache_sample_chunk_bytes: int = 512 * 1024
+    workspace_read_cache_deployment_id: str = ""
 
     trace_jaeger_endpoint: Optional[str] = None
     trace_jaeger_public_url: Optional[str] = "http://127.0.0.1:30051/jaeger"
@@ -160,6 +173,23 @@ class ENV:
     S3_SECURE = "SAGE_S3_SECURE"
     S3_BUCKET_NAME = "SAGE_S3_BUCKET_NAME"
     S3_PUBLIC_BASE_URL = "SAGE_S3_PUBLIC_BASE_URL"
+    WORKSPACE_READ_CACHE_ENABLED = "SAGE_WORKSPACE_READ_CACHE_ENABLED"
+    WORKSPACE_READ_CACHE_PROVIDER = "SAGE_WORKSPACE_READ_CACHE_PROVIDER"
+    WORKSPACE_READ_CACHE_PREFIX = "SAGE_WORKSPACE_READ_CACHE_PREFIX"
+    GCS_BUCKET_NAME = "SAGE_GCS_BUCKET_NAME"
+    GCS_CREDENTIALS_JSON = "SAGE_GCS_CREDENTIALS_JSON"
+    WORKSPACE_READ_CACHE_GCS_BUCKET = "SAGE_WORKSPACE_READ_CACHE_GCS_BUCKET"
+    WORKSPACE_READ_CACHE_GCS_PREFIX = "SAGE_WORKSPACE_READ_CACHE_GCS_PREFIX"
+    WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON = (
+        "SAGE_WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON"
+    )
+    WORKSPACE_READ_CACHE_SAMPLE_THRESHOLD_BYTES = (
+        "SAGE_WORKSPACE_READ_CACHE_SAMPLE_THRESHOLD_BYTES"
+    )
+    WORKSPACE_READ_CACHE_SAMPLE_CHUNK_BYTES = (
+        "SAGE_WORKSPACE_READ_CACHE_SAMPLE_CHUNK_BYTES"
+    )
+    WORKSPACE_READ_CACHE_DEPLOYMENT_ID = "SAGE_WORKSPACE_READ_CACHE_DEPLOYMENT_ID"
 
     SKILL_DIR = "SAGE_SKILL_WORKSPACE"
     KB_MCP_URL = "SAGE_KB_MCP_URL"
@@ -220,6 +250,14 @@ class ENV:
 
 def env_str(name: str, default: Optional[str] = None) -> Optional[str]:
     return os.getenv(name, default)
+
+
+def env_str_any(names: tuple[str, ...], default: Optional[str] = None) -> Optional[str]:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None:
+            return value
+    return default
 
 
 @overload
@@ -429,6 +467,67 @@ def build_startup_config(mode: str = "server") -> StartupConfig:
             s3_public_base_url=env_str(
                 ENV.S3_PUBLIC_BASE_URL, StartupConfig.s3_public_base_url
             ),
+            workspace_read_cache_enabled=env_bool(
+                ENV.WORKSPACE_READ_CACHE_ENABLED,
+                StartupConfig.workspace_read_cache_enabled,
+            ),
+            workspace_read_cache_provider=env_str(
+                ENV.WORKSPACE_READ_CACHE_PROVIDER,
+                StartupConfig.workspace_read_cache_provider,
+            )
+            or StartupConfig.workspace_read_cache_provider,
+            workspace_read_cache_prefix=env_str_any(
+                (
+                    ENV.WORKSPACE_READ_CACHE_PREFIX,
+                    ENV.WORKSPACE_READ_CACHE_GCS_PREFIX,
+                ),
+                StartupConfig.workspace_read_cache_prefix,
+            )
+            or StartupConfig.workspace_read_cache_prefix,
+            gcs_bucket_name=env_str_any(
+                (ENV.GCS_BUCKET_NAME, ENV.WORKSPACE_READ_CACHE_GCS_BUCKET),
+                StartupConfig.gcs_bucket_name,
+            )
+            or StartupConfig.gcs_bucket_name,
+            gcs_credentials_json=env_str_any(
+                (
+                    ENV.GCS_CREDENTIALS_JSON,
+                    ENV.WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON,
+                ),
+                StartupConfig.gcs_credentials_json,
+            ),
+            workspace_read_cache_gcs_bucket=env_str_any(
+                (ENV.GCS_BUCKET_NAME, ENV.WORKSPACE_READ_CACHE_GCS_BUCKET),
+                StartupConfig.workspace_read_cache_gcs_bucket,
+            ),
+            workspace_read_cache_gcs_prefix=env_str_any(
+                (
+                    ENV.WORKSPACE_READ_CACHE_PREFIX,
+                    ENV.WORKSPACE_READ_CACHE_GCS_PREFIX,
+                ),
+                StartupConfig.workspace_read_cache_gcs_prefix,
+            )
+            or StartupConfig.workspace_read_cache_gcs_prefix,
+            workspace_read_cache_gcs_credentials_json=env_str_any(
+                (
+                    ENV.GCS_CREDENTIALS_JSON,
+                    ENV.WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON,
+                ),
+                StartupConfig.workspace_read_cache_gcs_credentials_json,
+            ),
+            workspace_read_cache_sample_threshold_bytes=env_int(
+                ENV.WORKSPACE_READ_CACHE_SAMPLE_THRESHOLD_BYTES,
+                StartupConfig.workspace_read_cache_sample_threshold_bytes,
+            ),
+            workspace_read_cache_sample_chunk_bytes=env_int(
+                ENV.WORKSPACE_READ_CACHE_SAMPLE_CHUNK_BYTES,
+                StartupConfig.workspace_read_cache_sample_chunk_bytes,
+            ),
+            workspace_read_cache_deployment_id=env_str(
+                ENV.WORKSPACE_READ_CACHE_DEPLOYMENT_ID,
+                StartupConfig.workspace_read_cache_deployment_id,
+            )
+            or StartupConfig.workspace_read_cache_deployment_id,
         )
         return _normalize_paths(cfg)
 
@@ -589,6 +688,67 @@ def build_startup_config(mode: str = "server") -> StartupConfig:
         s3_public_base_url=env_str(
             ENV.S3_PUBLIC_BASE_URL, StartupConfig.s3_public_base_url
         ),
+        workspace_read_cache_enabled=env_bool(
+            ENV.WORKSPACE_READ_CACHE_ENABLED,
+            StartupConfig.workspace_read_cache_enabled,
+        ),
+        workspace_read_cache_provider=env_str(
+            ENV.WORKSPACE_READ_CACHE_PROVIDER,
+            StartupConfig.workspace_read_cache_provider,
+        )
+        or StartupConfig.workspace_read_cache_provider,
+        workspace_read_cache_prefix=env_str_any(
+            (
+                ENV.WORKSPACE_READ_CACHE_PREFIX,
+                ENV.WORKSPACE_READ_CACHE_GCS_PREFIX,
+            ),
+            StartupConfig.workspace_read_cache_prefix,
+        )
+        or StartupConfig.workspace_read_cache_prefix,
+        gcs_bucket_name=env_str_any(
+            (ENV.GCS_BUCKET_NAME, ENV.WORKSPACE_READ_CACHE_GCS_BUCKET),
+            StartupConfig.gcs_bucket_name,
+        )
+        or StartupConfig.gcs_bucket_name,
+        gcs_credentials_json=env_str_any(
+            (
+                ENV.GCS_CREDENTIALS_JSON,
+                ENV.WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON,
+            ),
+            StartupConfig.gcs_credentials_json,
+        ),
+        workspace_read_cache_gcs_bucket=env_str_any(
+            (ENV.GCS_BUCKET_NAME, ENV.WORKSPACE_READ_CACHE_GCS_BUCKET),
+            StartupConfig.workspace_read_cache_gcs_bucket,
+        ),
+        workspace_read_cache_gcs_prefix=env_str_any(
+            (
+                ENV.WORKSPACE_READ_CACHE_PREFIX,
+                ENV.WORKSPACE_READ_CACHE_GCS_PREFIX,
+            ),
+            StartupConfig.workspace_read_cache_gcs_prefix,
+        )
+        or StartupConfig.workspace_read_cache_gcs_prefix,
+        workspace_read_cache_gcs_credentials_json=env_str_any(
+            (
+                ENV.GCS_CREDENTIALS_JSON,
+                ENV.WORKSPACE_READ_CACHE_GCS_CREDENTIALS_JSON,
+            ),
+            StartupConfig.workspace_read_cache_gcs_credentials_json,
+        ),
+        workspace_read_cache_sample_threshold_bytes=env_int(
+            ENV.WORKSPACE_READ_CACHE_SAMPLE_THRESHOLD_BYTES,
+            StartupConfig.workspace_read_cache_sample_threshold_bytes,
+        ),
+        workspace_read_cache_sample_chunk_bytes=env_int(
+            ENV.WORKSPACE_READ_CACHE_SAMPLE_CHUNK_BYTES,
+            StartupConfig.workspace_read_cache_sample_chunk_bytes,
+        ),
+        workspace_read_cache_deployment_id=env_str(
+            ENV.WORKSPACE_READ_CACHE_DEPLOYMENT_ID,
+            StartupConfig.workspace_read_cache_deployment_id,
+        )
+        or StartupConfig.workspace_read_cache_deployment_id,
         trace_jaeger_endpoint=env_str(
             ENV.TRACE_JAEGER_URL,
             env_str(ENV.TRACE_JAEGER_ENDPOINT, StartupConfig.trace_jaeger_endpoint),

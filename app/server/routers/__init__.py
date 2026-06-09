@@ -19,6 +19,7 @@ def register_routes(app):
     from .observability import observability_router
     from .oauth2 import oauth2_router
     from .oss import oss_router
+    from .session_workspace import session_workspace_router
     from .skill import skill_router
     from .system import system_router
     from .task import task_router
@@ -29,6 +30,7 @@ def register_routes(app):
     app.include_router(mcp_router)
     app.include_router(auth_router)
     app.include_router(agent_router)
+    app.include_router(session_workspace_router)
     app.include_router(conversation_router)
     app.include_router(tool_router)
     app.include_router(kdb_router)

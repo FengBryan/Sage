@@ -5,7 +5,7 @@ Agent 相关路由
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 
 from common.core.request_identity import (
     get_request_role,
@@ -30,6 +30,21 @@ from loguru import logger
 
 # 创建路由器
 agent_router = APIRouter(prefix="/api/agent", tags=["Agent"])
+
+
+def _streaming_response_from_plan(plan, *, status_code: int = 200, headers=None):
+    response_headers = {
+        "Content-Length": str(plan.size),
+        "Content-Disposition": f'inline; filename="{plan.filename}"',
+    }
+    if headers:
+        response_headers.update(headers)
+    return StreamingResponse(
+        plan.iter_bytes(),
+        status_code=status_code,
+        headers=response_headers,
+        media_type=plan.media_type,
+    )
 
 
 def _resolve_request_language(
@@ -348,13 +363,13 @@ async def download_file(
     file_path = request.query_params.get("file_path")
     logger.info(f"Download request: file_path={file_path}")
     try:
-        path, filename, media_type = await agent_service.download_server_agent_file(
+        plan = await agent_service.prepare_server_agent_read_plan(
             agent_id,
             user_id,
             file_path,  # pyright: ignore[reportArgumentType]
         )
-        logger.info(f"Download resolved: path={path}")
-        return FileResponse(path=path, filename=filename, media_type=media_type)
+        logger.info(f"Download resolved: source={plan.source}")
+        return _streaming_response_from_plan(plan)
     except Exception as e:
         logger.error(f"Download failed: {e}")
         raise

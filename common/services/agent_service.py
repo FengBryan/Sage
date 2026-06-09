@@ -21,7 +21,17 @@ from common.services.agent_workspace import (
     get_agent_workspace_root,
     sync_selected_skills_to_workspace,
 )
+from common.services.workspace_read_cache import (
+    CacheScope,
+    HostWorkspaceFileSource,
+    NullObjectCacheStore,
+    ObjectCacheStore,
+    WorkspaceReadCache,
+    WorkspaceReadCacheConfig,
+    WorkspaceReadPlan,
+)
 from common.schemas.agent import AgentAbilityItem
+from sagents.session_runtime import get_global_session_manager
 
 DEFAULT_OPENCLAW_AGENT_NAME = "openclaw的小龙虾"
 DEFAULT_OPENCLAW_AGENT_DESCRIPTION = "从 OpenClaw 一键导入的智能体"
@@ -1128,6 +1138,143 @@ def get_desktop_agent_workspace_path(agent_id: str) -> Path:
         agent_id,
         app_mode="desktop",
         ensure_exists=False,
+    )
+
+
+def _default_workspace_cache_store(cache_cfg: WorkspaceReadCacheConfig) -> ObjectCacheStore:
+    from common.core.client.workspace_cache_store import create_workspace_cache_store
+
+    return create_workspace_cache_store(cache_cfg)
+
+
+def _workspace_read_cache_config() -> WorkspaceReadCacheConfig:
+    cfg = config.get_startup_config()
+    if cfg is None:
+        return WorkspaceReadCacheConfig(
+            enabled=False,
+            provider="gcs",
+            bucket=None,
+            prefix="workspace-cache",
+            credentials_json=None,
+            sample_threshold_bytes=3 * 1024 * 1024,
+            sample_chunk_bytes=512 * 1024,
+            deployment_id="",
+        )
+    return WorkspaceReadCacheConfig.from_startup_config(cfg)
+
+
+async def _prepare_workspace_read_plan(
+    *,
+    workspace_path: str | Path,
+    scope: CacheScope,
+    file_path: str,
+    byte_range: Optional[Tuple[int, int]] = None,
+    cache_store_factory=_default_workspace_cache_store,
+) -> WorkspaceReadPlan:
+    cache_cfg = _workspace_read_cache_config()
+    source = HostWorkspaceFileSource(workspace_path)
+    if not cache_cfg.usable:
+        disabled = WorkspaceReadCacheConfig(
+            enabled=False,
+            provider=cache_cfg.provider,
+            bucket=cache_cfg.bucket,
+            prefix=cache_cfg.prefix,
+            credentials_json=cache_cfg.credentials_json,
+            sample_threshold_bytes=cache_cfg.sample_threshold_bytes,
+            sample_chunk_bytes=cache_cfg.sample_chunk_bytes,
+            deployment_id=cache_cfg.deployment_id,
+        )
+        return await WorkspaceReadCache(disabled, NullObjectCacheStore()).plan_read(
+            scope=scope,
+            source=source,
+            relative_path=file_path,
+            byte_range=byte_range,
+        )
+    try:
+        store = cache_store_factory(cache_cfg)
+    except Exception as exc:
+        logger.warning(f"workspace read cache store unavailable: {exc}")
+        disabled = WorkspaceReadCacheConfig(
+            enabled=False,
+            provider=cache_cfg.provider,
+            bucket=cache_cfg.bucket,
+            prefix=cache_cfg.prefix,
+            credentials_json=cache_cfg.credentials_json,
+            sample_threshold_bytes=cache_cfg.sample_threshold_bytes,
+            sample_chunk_bytes=cache_cfg.sample_chunk_bytes,
+            deployment_id=cache_cfg.deployment_id,
+        )
+        return await WorkspaceReadCache(disabled, NullObjectCacheStore()).plan_read(
+            scope=scope,
+            source=source,
+            relative_path=file_path,
+            byte_range=byte_range,
+        )
+    return await WorkspaceReadCache(cache_cfg, store).plan_read(
+        scope=scope,
+        source=source,
+        relative_path=file_path,
+        byte_range=byte_range,
+    )
+
+
+async def prepare_server_agent_read_plan(
+    agent_id: str,
+    user_id: str,
+    file_path: str,
+    *,
+    byte_range: Optional[Tuple[int, int]] = None,
+    cache_store_factory=_default_workspace_cache_store,
+) -> WorkspaceReadPlan:
+    return await _prepare_workspace_read_plan(
+        workspace_path=get_server_agent_workspace_path(agent_id, user_id),
+        scope=CacheScope("agent", agent_id),
+        file_path=file_path,
+        byte_range=byte_range,
+        cache_store_factory=cache_store_factory,
+    )
+
+
+async def prepare_desktop_agent_read_plan(
+    agent_id: str,
+    file_path: str,
+    *,
+    byte_range: Optional[Tuple[int, int]] = None,
+    cache_store_factory=_default_workspace_cache_store,
+) -> WorkspaceReadPlan:
+    return await _prepare_workspace_read_plan(
+        workspace_path=get_desktop_agent_workspace_path(agent_id),
+        scope=CacheScope("agent", agent_id),
+        file_path=file_path,
+        byte_range=byte_range,
+        cache_store_factory=cache_store_factory,
+    )
+
+
+def get_session_workspace_path(session_id: str) -> str:
+    manager = get_global_session_manager()
+    workspace = manager.get_session_workspace(session_id) if manager else None
+    if not workspace:
+        raise SageHTTPException(
+            detail=f"Session 工作空间不存在: {session_id}",
+            error_detail=f"Session workspace not found: {session_id}",
+        )
+    return workspace
+
+
+async def prepare_session_read_plan(
+    session_id: str,
+    file_path: str,
+    *,
+    byte_range: Optional[Tuple[int, int]] = None,
+    cache_store_factory=_default_workspace_cache_store,
+) -> WorkspaceReadPlan:
+    return await _prepare_workspace_read_plan(
+        workspace_path=get_session_workspace_path(session_id),
+        scope=CacheScope("session", session_id),
+        file_path=file_path,
+        byte_range=byte_range,
+        cache_store_factory=cache_store_factory,
     )
 
 
