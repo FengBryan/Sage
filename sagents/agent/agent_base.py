@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional, Union, AsyncGenerator, cast
 import json
 import uuid
 import asyncio
+import os
 from sagents.utils.logger import logger
 from sagents.tool.tool_manager import ToolManager
 from sagents.tool.tool_progress import (
@@ -46,7 +47,6 @@ from sagents.utils.agent_session_helper import (
 )
 import traceback
 import time
-import os
 from openai import AsyncOpenAI, APIError, RateLimitError, APIConnectionError
 import httpx
 from openai.types.chat import chat_completion_chunk
